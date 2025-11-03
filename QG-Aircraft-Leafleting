@@ -1,0 +1,95 @@
+this setVariable ["missione_volantini", true, true];  
+this setVariable ["volantini_rimanenti", 1200, true];  
+  
+this addAction ["Rilascia Volantini", {  
+    params ["_target", "_caller"];  
+    if (_target getVariable "missione_volantini" && _target getVariable "volantini_rimanenti" > 0) then {  
+        _startRemaining = _target getVariable "volantini_rimanenti";  
+        _releaseAmount = 400;  
+        if (_startRemaining < _releaseAmount) then {  
+            _releaseAmount = _startRemaining;  
+        };  
+          
+        [_target, _releaseAmount] spawn {  
+            params ["_target", "_releaseAmount"];  
+              
+            for "_i" from 1 to _releaseAmount do {  
+                if (!alive _target) exitWith {};  
+                  
+                _pos = getPosASL _target;  
+                _dir = getDir _target;  
+                  
+                _offsetX = -8 * sin(_dir);  
+                _offsetY = -8 * cos(_dir);  
+                  
+                _spreadX = (random 12 - 6);    
+                _spreadY = (random 12 - 6);    
+                  
+                _leafletPos = [  
+                    (_pos select 0) + _offsetX + _spreadX,  
+                    (_pos select 1) + _offsetY + _spreadY,  
+                    (_pos select 2) - 1.5 + (random 2 - 1)   
+                ];  
+                  
+                _leaflet = createVehicle ["Leaflet_05_New_NATO_F", ASLToAGL _leafletPos, [], 0, "CAN_COLLIDE"];  
+                _leaflet setDir (random 360);  
+                  
+                _planeVel = velocity _target;  
+                _velX = (_planeVel select 0) * 0.7 + (random 6 - 3);  
+                _velY = (_planeVel select 1) * 0.7 + (random 6 - 3);  
+                _velZ = -4 - (random 4);  
+                  
+                _leaflet setVelocity [_velX, _velY, _velZ];  
+                  
+                _leaflet setVectorDirAndUp [  
+                    [random 2 - 1, random 2 - 1, -1],  
+                    [random 2 - 1, random 2 - 1, 1]  
+                ];  
+                  
+                [_leaflet] spawn {  
+                    params ["_leaflet"];  
+                    sleep 5400;  
+                    if (!isNull _leaflet) then {  
+                        deleteVehicle _leaflet;  
+                    };  
+                };  
+                  
+                _currentRemaining = _target getVariable "volantini_rimanenti";  
+                _target setVariable ["volantini_rimanenti", _currentRemaining - 1, true];  
+                  
+                sleep 0.02;  
+            };  
+              
+            _finalRemaining = _target getVariable "volantini_rimanenti";  
+            systemChat format ["Rilasciati %1 volantini! Rimangono: %2", _releaseAmount, _finalRemaining];  
+              
+            if (_finalRemaining <= 0) then {  
+                systemChat "Missione completata: tutti i volantini distribuiti!";  
+                _target setVariable ["missione_volantini", false, true];  
+            };  
+        };  
+    };  
+}, [], 1.5, true, true, "", "(_this in [driver _target, gunner _target, _target turretUnit [0]]) && alive _target"];  
+  
+this addAction ["Controlla Volantini", {  
+    params ["_target"];  
+    _remaining = _target getVariable "volantini_rimanenti";  
+    hint format ["Volantini rimanenti: %1/1200", _remaining];  
+}, [], 1.5, true, true, "", "(_this in [driver _target, gunner _target, _target turretUnit [0]]) && alive _target"];  
+  
+this addAction ["Ricarica Volantini", {  
+    params ["_target", "_caller"];  
+     
+ 
+    if (isEngineOn _target) exitWith { 
+        hint "Spegni il motore prima di ricaricare i volantini!"; 
+    }; 
+     
+    if (!isTouchingGround _target) exitWith { 
+        hint "L'aereo deve essere a terra per ricaricare i volantini!"; 
+    }; 
+     
+    _target setVariable ["volantini_rimanenti", 1200, true];  
+    _target setVariable ["missione_volantini", true, true];  
+    systemChat "Volantini ricaricati! 1200/1200 pronti per il lancio.";  
+}, [], 1.5, true, true, "", "(_this in [driver _target, gunner _target, _target turretUnit [0]]) && alive _target && !(isEngineOn _target) && (isTouchingGround _target)"];
